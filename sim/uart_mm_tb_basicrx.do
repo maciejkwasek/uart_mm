@@ -8,9 +8,10 @@ vcom ../../rtl/uart_rx.vhd
 vcom ../../rtl/uart_mm.vhd
 
 vcom ../../tb/uart_mm_helper.vhd
-vcom ../../tb/uart_mm_tb.vhd
+vcom ../../tb/uart_mm_tb_basicrx.vhd
 
-vsim work.uart_mm_tb
+vsim work.uart_mm_tb_basicrx
 
 add wave *
-run 50 us
+
+run 70 us
