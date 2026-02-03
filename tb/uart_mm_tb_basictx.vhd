@@ -11,20 +11,22 @@ architecture tb of uart_mm_tb_basictx is
 
 	signal clk : std_logic;
 	signal rst_n : std_logic;
-	
+
 	signal txd : std_logic;
 	signal rxd : std_logic;
-	
+
 	signal avs_addr : std_logic_vector(1 downto 0);
-	
+
+	signal avs_chipselect : std_logic := '0';
+
 	signal avs_write : std_logic := '0';
 	signal avs_writedata : std_logic_vector(31 downto 0);
-	
+
 	signal avs_read : std_logic := '0';
 	signal avs_readdata : std_logic_vector(31 downto 0);
-	
+
 	signal avs_waitrequest : std_logic;
-	
+
 begin
 
 	uart_mm : entity work.uart_mm
@@ -36,24 +38,25 @@ begin
 		(
 			clk => clk,
 			rst_n => rst_n,
-			
+
 			txd => txd,
 			rxd => rxd,
-		
+
 			avs_addr => avs_addr,
-		
+			avs_chipselect => avs_chipselect,
+
 			avs_write => avs_write,
 			avs_writedata => avs_writedata,
-		
+
 			avs_read => avs_read,
 			avs_readdata => avs_readdata,
-		
+
 			avs_waitrequest => avs_waitrequest
 		);
-		
+
 	-- reset
    rst_n <= '0', '1' after 20 ns;
-		
+
 	-- clk
 	process
 	begin
@@ -68,13 +71,19 @@ begin
 	begin
 
 		report "txd = " & std_logic'image(txd);
-		wait for 100 ns;
+
+		wait for 40 ns;
 		wait until rising_edge(clk);
-		
+
+		avs_chipselect <= '1';
+
+		wait for 60 ns;
+		wait until rising_edge(clk);
+
 		uart_readdata(clk, avs_addr, avs_read, "10");
 		assert avs_readdata(1 downto 0) = "01"
 			report "avs_readdata should be 01, fifotx: full=0, empty=1" severity error;
-		
+
 		-- write 8x byte until full
 		uart_writedata(clk, avs_addr, avs_writedata, avs_write, x"aa");
 		uart_writedata(clk, avs_addr, avs_writedata, avs_write, x"bb");
@@ -85,26 +94,29 @@ begin
 		uart_writedata(clk, avs_addr, avs_writedata, avs_write, x"22");
 		uart_writedata(clk, avs_addr, avs_writedata, avs_write, x"33");
 		uart_writedata(clk, avs_addr, avs_writedata, avs_write, x"55"); -- full
-		
+
 		uart_readdata(clk, avs_addr, avs_read, "10");
 		assert avs_readdata(1 downto 0) = "10"
 			report "avs_readdata should be 10, fifotx: full=1, empty=0" severity error;
-		
+
 		-- wait until not fifo full
 		loop
 			uart_readdata(clk, avs_addr, avs_read, "10");
 			exit when avs_readdata(1) = '0';
 		end loop;
-		
+
 		uart_writedata(clk, avs_addr, avs_writedata, avs_write, x"a5");
-		
+
 		-- wait until fifo empty
 		loop
 			uart_readdata(clk, avs_addr, avs_read, "10");
 			exit when avs_readdata(0) = '1';
 		end loop;
-		
+
+		avs_chipselect <= '0';
+		wait for 10 ns;
+
 		wait;
 	end process;
-		
+
 end architecture;

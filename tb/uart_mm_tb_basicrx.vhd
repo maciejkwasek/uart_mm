@@ -16,6 +16,8 @@ architecture sim of uart_mm_tb_basicrx is
 		signal rxd : std_logic;
 		
 		signal avs_addr : std_logic_vector(1 downto 0);
+
+		signal avs_chipselect : std_logic := '0';
 		
 		signal avs_write : std_logic := '0';
 		signal avs_writedata : std_logic_vector(31 downto 0);
@@ -41,23 +43,24 @@ begin
 			rxd => rxd,
 		
 			avs_addr => avs_addr,
-		
+			avs_chipselect => avs_chipselect,
+
 			avs_write => avs_write,
 			avs_writedata => avs_writedata,
-		
+
 			avs_read => avs_read,
 			avs_readdata => avs_readdata,
-		
+
 			avs_waitrequest => avs_waitrequest
 		);
 
-		
+
 	-- reset
    rst_n <= '0', '1' after 20 ns;
-	
+
 	-- uart loop
 	rxd <= txd;
-		
+
 	-- clk
 	process
 	begin
@@ -72,7 +75,13 @@ begin
 	begin
 		report "txd = " & std_logic'image(txd);
 		report "rxd = " & std_logic'image(rxd);
-		wait for 100 ns;
+
+		wait for 40 ns;
+		wait until rising_edge(clk);
+
+		avs_chipselect <= '1';
+
+		wait for 60 ns;
 		wait until rising_edge(clk);
 
 		-- write 8x byte until full
@@ -123,18 +132,21 @@ begin
 		uart_readdata(clk, avs_addr, avs_read, "00");
 		assert avs_readdata(7 downto 0) = x"33"
 			report "avs_readdata should be 0x33" severity error;
-			
+
 		-- wait until rx fifo is empty
 		loop
 			uart_readdata(clk, avs_addr, avs_read, "01");
 			exit when avs_readdata(0) = '0';
 		end loop;
-		
+
 		uart_readdata(clk, avs_addr, avs_read, "00");
 		assert avs_readdata(7 downto 0) = x"55"
 			report "avs_readdata should be 0x55" severity error;
-		
+
+		avs_chipselect <= '0';
+		wait for 10 ns;
+
 		wait;
 	end process;
-		
+
 end architecture;
